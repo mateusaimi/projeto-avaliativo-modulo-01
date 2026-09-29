@@ -1,2 +1,3 @@
 -- Fase 0: executar conectado ao banco postgres.
--- TODO: criar o banco supermarket_sales_db.
+-- Executar uma vez, conectado ao banco de manutencao chamado postgres.
+CREATE DATABASE supermarket_sales_db;

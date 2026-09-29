@@ -1,64 +1,92 @@
 # Projeto Avaliativo Módulo 01 — Análise de Vendas de Supermercado
 
-> Status: estrutura inicial. O pipeline e os resultados serão completados e conferidos durante o desenvolvimento.
-
-## Objetivo
-
-Organizar os registros de vendas em uma camada bruta e uma camada tratada, usar SQL e Pandas para preparar os dados e responder às perguntas de negócio do Projeto Avaliativo do Módulo 01.
+Projeto de análise do dataset **Supermarket Sales** com PostgreSQL, SQL e Pandas. O fluxo separa a cópia original dos dados (Raw) dos dados tipados e tratados, registra decisões de qualidade, responde às perguntas do enunciado e gera gráficos.
 
 ## Fonte dos dados
 
-Dataset Supermarket Sales, indicado no enunciado: https://www.kaggle.com/datasets/faresashraf1001/supermarket-sales
+Dataset indicado no enunciado: [Supermarket Sales no Kaggle](https://www.kaggle.com/datasets/faresashraf1001/supermarket-sales). Baixe o CSV original e salve-o como `data/raw/supermarket_sales.csv`. Não edite o arquivo original; os scripts conferem as colunas e preservam seus valores na camada Raw.
 
-O arquivo original deverá ser mantido em data/raw/ sem edição manual. O formato e as colunas serão conferidos antes da carga.
+## Pré-requisitos
 
-## Pré-requisitos previstos
+- Windows com Python 3.14, Git e VS Code.
+- PostgreSQL instalado e em execução, com pgAdmin ou outra ferramenta para executar SQL.
+- Conta GitHub para publicar o repositório e entregar o link no AVA.
 
-- Python 3.14 ou outra versão compatível com as dependências registradas em requirements.txt.
-- PostgreSQL e pgAdmin (ou outra ferramenta SQL).
-- Git e VS Code.
-- Conta GitHub para publicar o repositório e enviar o link no AVA.
+## 1. Preparar o ambiente Python
 
-As credenciais locais do banco ficarão em um arquivo .env, ignorado pelo Git. Use .env.example como modelo e nunca publique a senha.
+Abra a pasta `projeto-avaliativo-modulo-01` no VS Code. No menu **Terminal > Novo Terminal**, execute:
 
-### Preparar o ambiente Python no Windows
+```powershell
+python --version
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env
+```
 
-No terminal do VS Code, aberto na pasta do projeto, execute:
+Abra `.env` no VS Code e substitua `DB_PASSWORD` pela senha local definida na instalação do PostgreSQL. Confira também `DB_HOST`, `DB_PORT` e `DB_USER` se você escolheu valores diferentes. O arquivo `.env` é local e está ignorado pelo Git; não o envie ao GitHub nem compartilhe sua senha.
 
-    python -m venv .venv
-    .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-    Copy-Item .env.example .env
+## 2. Baixar o CSV
 
-Depois, edite somente o arquivo .env para informar a senha definida na instalação local do PostgreSQL. O arquivo .env está ignorado pelo Git.
+Coloque o CSV original baixado do Kaggle em `data/raw/supermarket_sales.csv`. Não abra e salve novamente em outro formato: a camada Raw deve refletir os valores recebidos da fonte.
 
-## Etapas previstas
+## 3. Criar o banco e as tabelas
 
-1. Baixar o CSV original e preservá-lo em data/raw/.
-2. Criar o banco e as tabelas Raw e Tratada no PostgreSQL.
-3. Consultar os dados com SQL e exportar o resultado para CSV.
-4. Inspecionar e tratar os dados com Pandas.
-5. Salvar a base tratada, calcular as métricas e gerar gráficos.
+No pgAdmin:
 
-## Estrutura
+1. Conecte ao servidor PostgreSQL e abra o Query Tool do banco de manutenção `postgres`.
+2. Abra e execute `sql/01_criar_banco.sql`. Esse comando cria `supermarket_sales_db`; execute-o somente uma vez.
+3. Atualize a lista de bancos e conecte-se a `supermarket_sales_db`.
+4. Abra e execute `sql/02_criar_tabelas.sql` nesse banco. Ele cria `raw_vendas` (campos originais como texto) e `vendas_tratadas` (colunas tipadas e com restrições).
 
-- sql/: criação do banco, criação de tabelas e consultas.
-- src/: leitura e inspeção, ETL e análise estatística.
-- data/raw/: arquivo original e exportações SQL.
-- data/processed/: base tratada e dicionário de dados.
-- resultados/: respostas e gráficos.
+## 4. Carregar e consultar a camada Raw
 
-## Execução
+No terminal do VS Code, ainda na pasta do projeto, execute:
 
-Os comandos finais serão acrescentados após a implementação do pipeline. A ordem de execução prevista é:
+```powershell
+.\.venv\Scripts\python.exe src\01_leitura_dados.py
+```
 
-1. Criar o banco com sql/01_criar_banco.sql.
-2. Criar as tabelas Raw e Tratada com sql/02_criar_tabelas.sql.
-3. Carregar o CSV original na tabela Raw e executar sql/03_consultas.sql.
-4. Executar src/01_leitura_dados.py e src/02_etl_vendas.py.
-5. Executar src/03_estatistica.py para salvar as métricas e os gráficos.
+O programa inspeciona o CSV, carrega seus valores originais na tabela `raw_vendas` e exporta o resultado de um `SELECT` para `data/raw/vendas_exportadas.csv`. A carga substitui os dados Raw de uma execução anterior; mantenha o CSV original intacto.
 
-Consulte data/processed/dicionario_dados.md para o mapeamento entre as colunas do CSV e a camada tratada.
+Depois, no pgAdmin conectado a `supermarket_sales_db`, abra e execute `sql/03_consultas.sql`. Confira a contagem, a amostra e as agregações da tabela Raw.
 
-## Resultados
+## 5. Tratar os dados e carregar a camada Tratada
 
-As respostas às perguntas de negócio e as visualizações serão documentadas aqui quando a análise estiver concluída.
+No terminal do VS Code, execute:
+
+```powershell
+.\.venv\Scripts\python.exe src\02_etl_vendas.py
+```
+
+O ETL normaliza os nomes, converte tipos, verifica IDs repetidos, valores numéricos, datas, horários e regras de domínio. As decisões e quantidades ficam registradas em `resultados/relatorio_qualidade.csv`. A base tratada é salva em `data/processed/vendas_tratadas.csv` e carregada em `vendas_tratadas`. Consulte `data/processed/dicionario_dados.md` para o mapeamento e as regras de negócio.
+
+## 6. Responder às perguntas e gerar gráficos
+
+Execute:
+
+```powershell
+.\.venv\Scripts\python.exe src\03_estatistica.py
+```
+
+O programa salva as oito respostas em `resultados/respostas_perguntas_negocio.csv`, o resumo numérico do Pandas em `resultados/estatisticas_descritivas.csv`, um relatório com metodologia, respostas e tabelas em `resultados/respostas_perguntas_negocio.md` e os gráficos PNG em `resultados/`. O relatório distingue faturamento (`Total`/`valor_total`) de receita bruta (`gross income`/`receita_bruta`). Como a fonte não informa a moeda, valores aparecem em unidades monetárias, sem símbolo de moeda. Os empates são apresentados juntos.
+
+## Fluxo resumido
+
+```text
+CSV original -> PostgreSQL Raw -> consultas SQL -> exportação CSV
+             -> Pandas/ETL -> PostgreSQL Tratada e CSV tratado
+             -> estatísticas -> respostas, tabelas e gráficos
+```
+
+## Estrutura do projeto
+
+- `sql/`: criação do banco, das tabelas e consultas de exploração.
+- `src/`: inspeção e carga Raw, ETL e análise estatística.
+- `data/raw/`: CSV original e exportação da consulta Raw.
+- `data/processed/`: CSV tratado e dicionário de dados.
+- `resultados/`: auditoria de qualidade, respostas, tabelas e gráficos.
+- `.env.example`: modelo das configurações locais; a senha real fica somente em `.env`.
+
+## Reprodutibilidade e entrega
+
+As dependências estão registradas em `requirements.txt`. A sequência das seções 1–6 reproduz a análise em uma instalação local. Antes de entregar, confira que o repositório GitHub contém o código, os arquivos SQL, o README, a auditoria, as respostas e os gráficos; que `.env` e credenciais não foram publicados; e que o link correto do repositório foi enviado no AVA. A data e hora limite informadas no enunciado são **05/10/2026 às 22h**.

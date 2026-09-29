@@ -29,4 +29,4 @@ Este dicionário segue os tipos e as restrições publicados no enunciado. Os no
 - Registrar quantos valores nulos e duplicados foram encontrados antes de decidir como tratá-los.
 - A coluna id_venda deve permanecer texto. Não calcular métricas somando identificadores.
 - Usar valor_total (origem Total) para faturamento, média e maior venda. A coluna receita_bruta mapeia gross income conforme o dicionário do enunciado e deve ser analisada separadamente.
-- O enunciado pede duas casas decimais para vários campos numéricos. Conferir a precisão existente no CSV e documentar qualquer arredondamento aplicado.
+- O enunciado pede duas casas decimais para os campos numéricos. O ETL confere `Total` contra preço × quantidade + imposto antes do arredondamento, grava os campos com duas casas e registra na auditoria quantos valores mudaram.
