@@ -21,6 +21,16 @@ O arquivo original deverá ser mantido em data/raw/ sem edição manual. O forma
 
 As credenciais locais do banco ficarão em um arquivo .env, ignorado pelo Git. Use .env.example como modelo e nunca publique a senha.
 
+### Preparar o ambiente Python no Windows
+
+No terminal do VS Code, aberto na pasta do projeto, execute:
+
+    python -m venv .venv
+    .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+    Copy-Item .env.example .env
+
+Depois, edite somente o arquivo .env para informar a senha definida na instalação local do PostgreSQL. O arquivo .env está ignorado pelo Git.
+
 ## Etapas previstas
 
 1. Baixar o CSV original e preservá-lo em data/raw/.
