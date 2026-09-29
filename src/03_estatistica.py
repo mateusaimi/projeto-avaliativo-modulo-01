@@ -390,7 +390,10 @@ def save_markdown(
         [
             "## Critérios de cálculo",
             "",
-            "- Faturamento: soma de `valor_total` (coluna `Total` da fonte).",
+            (
+                "- Faturamento: soma de `valor_total` (coluna `Sales` da fonte, "
+                "equivalente a Total no enunciado)."
+            ),
             "- Quantidade de transações: contagem de IDs de venda distintos.",
             "- Avaliação média: média de `avaliacao`, ignorando valores ausentes.",
             "- Venda média: média de um `valor_total` por ID de venda distinto.",

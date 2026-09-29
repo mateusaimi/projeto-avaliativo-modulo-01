@@ -27,7 +27,7 @@ SOURCE_TO_TARGET = {
     "Unit price": "preco_unitario",
     "Quantity": "quantidade",
     "Tax 5%": "imposto",
-    "Total": "valor_total",
+    "Sales": "valor_total",
     "Date": "data_venda",
     "Time": "hora_venda",
     "Payment": "forma_pagamento",
@@ -159,7 +159,7 @@ def convert_numeric_columns(data: pd.DataFrame, audit: dict) -> pd.DataFrame:
 
 
 def convert_dates_and_times(data: pd.DataFrame, audit: dict) -> pd.DataFrame:
-    """Converte datas no formato M/D/YYYY e horarios no formato HH:MM."""
+    """Converte datas M/D/YYYY e horarios no formato de 12 horas."""
     date_source = data["data_venda"]
     parsed_dates = pd.to_datetime(
         date_source,
@@ -172,7 +172,7 @@ def convert_dates_and_times(data: pd.DataFrame, audit: dict) -> pd.DataFrame:
     time_source = data["hora_venda"]
     parsed_times = pd.to_datetime(
         time_source,
-        format="%H:%M",
+        format="%I:%M:%S %p",
         errors="coerce",
     )
     invalid_times = time_source.notna() & parsed_times.isna()
@@ -185,7 +185,7 @@ def convert_dates_and_times(data: pd.DataFrame, audit: dict) -> pd.DataFrame:
 
 
 def check_total_calculation(data: pd.DataFrame, audit: dict) -> None:
-    """Compara Total com preco x quantidade + imposto antes do arredondamento."""
+    """Compara Sales com preco x quantidade + imposto antes do arredondamento."""
     needed = ["preco_unitario", "quantidade", "imposto", "valor_total"]
     comparable = data[needed].notna().all(axis=1)
     expected_total = (

@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = PROJECT_ROOT / "data" / "raw"
-SOURCE_CSV = RAW_DIR / "supermarket_sales.csv"
+SOURCE_CSV = RAW_DIR / "SuperMarket Analysis.csv"
 EXPORTED_CSV = RAW_DIR / "vendas_exportadas.csv"
 DOTENV_PATH = PROJECT_ROOT / ".env"
 
@@ -27,7 +27,7 @@ RAW_COLUMNS = [
     "Unit price",
     "Quantity",
     "Tax 5%",
-    "Total",
+    "Sales",
     "Date",
     "Time",
     "Payment",
@@ -48,7 +48,7 @@ SELECT
     "Unit price",
     "Quantity",
     "Tax 5%",
-    "Total",
+    "Sales",
     "Date",
     "Time",
     "Payment",
@@ -65,8 +65,8 @@ def read_source_csv() -> pd.DataFrame:
     """Lê os campos do CSV como texto para preservar a camada Raw."""
     if not SOURCE_CSV.is_file():
         raise FileNotFoundError(
-            "CSV nao encontrado. Salve o arquivo original com o nome "
-            f"supermarket_sales.csv em: {RAW_DIR}"
+            "CSV nao encontrado. O arquivo original esperado e "
+            f"{SOURCE_CSV.name}, em: {RAW_DIR}"
         )
 
     data = pd.read_csv(

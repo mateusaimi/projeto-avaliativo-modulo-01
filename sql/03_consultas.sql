@@ -14,16 +14,16 @@ LIMIT 10;
 SELECT
     "Invoice ID",
     "Branch",
-    "Total"
+    "Sales"
 FROM raw_vendas
-WHERE "Branch" = 'A'
-ORDER BY "Total" DESC
+WHERE "Branch" = 'Alex'
+ORDER BY NULLIF(BTRIM("Sales"), '')::NUMERIC DESC
 LIMIT 10;
 
 -- Faturamento por filial.
 SELECT
     "Branch" AS filial,
-    SUM(NULLIF(BTRIM("Total"), '')::NUMERIC) AS faturamento
+    SUM(NULLIF(BTRIM("Sales"), '')::NUMERIC) AS faturamento
 FROM raw_vendas
 GROUP BY "Branch"
 ORDER BY faturamento DESC;
@@ -39,7 +39,7 @@ ORDER BY quantidade_vendas DESC;
 -- Faturamento por linha de produto.
 SELECT
     "Product line" AS linha_produto,
-    SUM(NULLIF(BTRIM("Total"), '')::NUMERIC) AS faturamento
+    SUM(NULLIF(BTRIM("Sales"), '')::NUMERIC) AS faturamento
 FROM raw_vendas
 GROUP BY "Product line"
 ORDER BY faturamento DESC;
@@ -64,7 +64,7 @@ ORDER BY quantidade_vendas DESC;
 WITH vendas AS (
     SELECT DISTINCT ON ("Invoice ID")
         "Invoice ID",
-        NULLIF(BTRIM("Total"), '')::NUMERIC AS valor_total
+        NULLIF(BTRIM("Sales"), '')::NUMERIC AS valor_total
     FROM raw_vendas
     ORDER BY "Invoice ID", raw_id
 )

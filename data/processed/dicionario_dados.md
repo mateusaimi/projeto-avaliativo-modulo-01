@@ -13,9 +13,9 @@ Este dicionário segue os tipos e as restrições publicados no enunciado. Os no
 | preco_unitario | Unit price | NUMERIC(10,2) | CHECK >= 0. |
 | quantidade | Quantity | INTEGER | CHECK > 0. |
 | imposto | Tax 5% | NUMERIC(10,2) | CHECK >= 0. |
-| valor_total | Total | NUMERIC(12,2) | CHECK >= 0. Valor da transação usado nas métricas de faturamento. Conferir contra o valor original antes de qualquer arredondamento. |
-| data_venda | Date | DATE | Converter o texto do CSV para data; confirmar o formato ao inspecionar o arquivo. |
-| hora_venda | Time | TIME | Converter o texto do CSV para horário. |
+| valor_total | Sales (corresponde a Total no enunciado) | NUMERIC(12,2) | CHECK >= 0. Valor da transação usado nas métricas de faturamento. Conferir contra o valor original antes de qualquer arredondamento. |
+| data_venda | Date | DATE | Converter o texto M/D/YYYY do CSV para data. |
+| hora_venda | Time | TIME | Converter o texto HH:MM:SS AM/PM do CSV para horário. |
 | forma_pagamento | Payment | VARCHAR(50) | NOT NULL. |
 | custo_mercadoria | cogs | NUMERIC(12,2) | CHECK >= 0. |
 | margem_percentual | gross margin percentage | NUMERIC(10,2) | Preservar o valor de origem com a precisão exigida no enunciado. |
@@ -28,5 +28,6 @@ Este dicionário segue os tipos e as restrições publicados no enunciado. Os no
 - Preservar o CSV original sem alterações na camada Raw; conversões e padronizações pertencem à camada tratada.
 - Registrar quantos valores nulos e duplicados foram encontrados antes de decidir como tratá-los.
 - A coluna id_venda deve permanecer texto. Não calcular métricas somando identificadores.
-- Usar valor_total (origem Total) para faturamento, média e maior venda. A coluna receita_bruta mapeia gross income conforme o dicionário do enunciado e deve ser analisada separadamente.
-- O enunciado pede duas casas decimais para os campos numéricos. O ETL confere `Total` contra preço × quantidade + imposto antes do arredondamento, grava os campos com duas casas e registra na auditoria quantos valores mudaram.
+- Na fonte recebida, Branch contém os rótulos `Alex`, `Cairo` e `Giza`; mantê-los sem substituição. A coluna City contém as cidades que vieram no CSV.
+- Usar valor_total (origem Sales, correspondente a Total no enunciado) para faturamento, média e maior venda. A coluna receita_bruta mapeia gross income conforme o dicionário do enunciado e deve ser analisada separadamente.
+- O enunciado pede duas casas decimais para os campos numéricos. O ETL confere `Sales` contra preço × quantidade + imposto antes do arredondamento, grava os campos com duas casas e registra na auditoria quantos valores mudaram.

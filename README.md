@@ -4,7 +4,11 @@ Projeto de análise do dataset **Supermarket Sales** com PostgreSQL, SQL e Panda
 
 ## Fonte dos dados
 
-Dataset indicado no enunciado: [Supermarket Sales no Kaggle](https://www.kaggle.com/datasets/faresashraf1001/supermarket-sales). Baixe o CSV original e salve-o como `data/raw/supermarket_sales.csv`. Não edite o arquivo original; os scripts conferem as colunas e preservam seus valores na camada Raw.
+Dataset indicado no enunciado: [Supermarket Sales no Kaggle](https://www.kaggle.com/datasets/faresashraf1001/supermarket-sales). O arquivo fornecido, `SuperMarket Analysis.csv`, deve ficar em `data/raw/` com esse nome. Não edite o arquivo original: a camada Raw preserva os nomes e valores recebidos da fonte.
+
+### Correspondência com o dicionário do enunciado
+
+O arquivo fornecido usa `Sales` para o valor da venda, enquanto o dicionário do enunciado chama o campo tratado de `valor_total`. O ETL mapeia `Sales` para `valor_total` e confere a fórmula `Unit price × Quantity + Tax 5%` antes do arredondamento. As filiais aparecem na fonte como `Alex`, `Cairo` e `Giza`; esses rótulos são preservados sem substituição na camada Raw e na coluna `filial`.
 
 ## Pré-requisitos
 
@@ -27,7 +31,7 @@ Abra `.env` no VS Code e substitua `DB_PASSWORD` pela senha local definida na in
 
 ## 2. Baixar o CSV
 
-Coloque o CSV original baixado do Kaggle em `data/raw/supermarket_sales.csv`. Não abra e salve novamente em outro formato: a camada Raw deve refletir os valores recebidos da fonte.
+Coloque `SuperMarket Analysis.csv` em `data/raw/`. Não abra e salve novamente em outro formato: a camada Raw deve refletir os valores recebidos da fonte.
 
 ## 3. Criar o banco e as tabelas
 
@@ -68,7 +72,7 @@ Execute:
 .\.venv\Scripts\python.exe src\03_estatistica.py
 ```
 
-O programa salva as oito respostas em `resultados/respostas_perguntas_negocio.csv`, o resumo numérico do Pandas em `resultados/estatisticas_descritivas.csv`, um relatório com metodologia, respostas e tabelas em `resultados/respostas_perguntas_negocio.md` e os gráficos PNG em `resultados/`. O relatório distingue faturamento (`Total`/`valor_total`) de receita bruta (`gross income`/`receita_bruta`). Como a fonte não informa a moeda, valores aparecem em unidades monetárias, sem símbolo de moeda. Os empates são apresentados juntos.
+O programa salva as oito respostas em `resultados/respostas_perguntas_negocio.csv`, o resumo numérico do Pandas em `resultados/estatisticas_descritivas.csv`, um relatório com metodologia, respostas e tabelas em `resultados/respostas_perguntas_negocio.md` e os gráficos PNG em `resultados/`. O relatório distingue faturamento (`Sales`/`valor_total`) de receita bruta (`gross income`/`receita_bruta`). Como a fonte não informa a moeda, valores aparecem em unidades monetárias, sem símbolo de moeda. Os empates são apresentados juntos.
 
 ## Fluxo resumido
 

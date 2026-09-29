@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS raw_vendas (
     "Unit price" TEXT,
     "Quantity" TEXT,
     "Tax 5%" TEXT,
-    "Total" TEXT,
+    "Sales" TEXT,
     "Date" TEXT,
     "Time" TEXT,
     "Payment" TEXT,
