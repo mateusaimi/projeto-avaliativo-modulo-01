@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Credenciais e configuracao local
+.env
+
+# Arquivos locais do editor
+.vscode/
+
+# Logs
+*.log

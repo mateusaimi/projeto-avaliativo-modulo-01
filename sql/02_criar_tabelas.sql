@@ -1,0 +1,2 @@
+-- Fase 0: criar as tabelas Raw e Tratada com as constraints do enunciado.
+-- TODO: definir chaves primarias, campos obrigatorios e regras CHECK.

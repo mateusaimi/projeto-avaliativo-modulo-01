@@ -1,0 +1,2 @@
+-- Fase 2: consultas SQL para inspecao, agregacoes e exportacao dos dados.
+-- TODO: incluir SELECT, WHERE, GROUP BY, SUM, AVG, COUNT e MAX.
