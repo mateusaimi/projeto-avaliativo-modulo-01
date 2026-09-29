@@ -173,12 +173,39 @@ def load_raw_table(data: pd.DataFrame, engine: Engine) -> int:
     return int(loaded_count)
 
 
-def export_raw_query(engine: Engine) -> int:
+def export_raw_query(engine: Engine) -> pd.DataFrame:
     """Exporta o resultado de um SELECT do PostgreSQL para CSV."""
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     exported = pd.read_sql_query(text(EXPORT_QUERY), con=engine)
     exported.to_csv(EXPORTED_CSV, index=False, encoding="utf-8-sig")
-    return len(exported)
+    return exported
+
+
+def verify_raw_round_trip(source: pd.DataFrame, exported: pd.DataFrame) -> None:
+    """Confere que a ida ao PostgreSQL preservou cada campo e a ordem das linhas."""
+    if source.shape != exported.shape or list(source.columns) != list(exported.columns):
+        raise RuntimeError(
+            "A exportacao Raw nao corresponde ao formato do CSV original: "
+            f"original={source.shape}, exportada={exported.shape}."
+        )
+
+    source_values = source.astype("string").fillna("")
+    exported_values = exported.astype("string").fillna("")
+    matches = source_values.eq(exported_values).all(axis=1)
+    if not bool(matches.all()):
+        different_rows = matches.index[~matches].tolist()
+        examples = []
+        for row_index in different_rows[:5]:
+            different_columns = source_values.columns[
+                source_values.iloc[row_index].ne(exported_values.iloc[row_index])
+            ]
+            examples.append(
+                f"linha CSV {row_index + 2}: {list(different_columns)}"
+            )
+        raise RuntimeError(
+            f"{len(different_rows)} linhas diferem do CSV original apos a carga Raw. "
+            f"Exemplos: {examples}"
+        )
 
 
 def main() -> None:
@@ -188,7 +215,9 @@ def main() -> None:
     engine = make_engine()
     try:
         loaded_count = load_raw_table(data, engine)
-        exported_count = export_raw_query(engine)
+        exported = export_raw_query(engine)
+        exported_count = len(exported)
+        verify_raw_round_trip(data, exported)
     except SQLAlchemyError as error:
         print(
             "Falha ao acessar o PostgreSQL. Confira se o servico esta ativo, "
@@ -204,6 +233,7 @@ def main() -> None:
         "Registros exportados para "
         f"{EXPORTED_CSV.relative_to(PROJECT_ROOT)}: {exported_count}"
     )
+    print("Fidelidade Raw: todos os campos e a ordem das linhas conferem.")
 
     if loaded_count != len(data) or exported_count != loaded_count:
         raise RuntimeError(

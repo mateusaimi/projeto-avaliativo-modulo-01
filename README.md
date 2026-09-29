@@ -50,7 +50,7 @@ No terminal do VS Code, ainda na pasta do projeto, execute:
 .\.venv\Scripts\python.exe src\01_leitura_dados.py
 ```
 
-O programa inspeciona o CSV, carrega seus valores originais na tabela `raw_vendas` e exporta o resultado de um `SELECT` para `data/raw/vendas_exportadas.csv`. A carga substitui os dados Raw de uma execução anterior; mantenha o CSV original intacto.
+O programa inspeciona o CSV, carrega seus valores originais na tabela `raw_vendas` e exporta o resultado de um `SELECT` para `data/raw/vendas_exportadas.csv`. Também compara todas as células e a ordem das linhas exportadas com o CSV de origem. A carga substitui os dados Raw de uma execução anterior; mantenha o CSV original intacto.
 
 Depois, no pgAdmin conectado a `supermarket_sales_db`, abra e execute `sql/03_consultas.sql`. Confira a contagem, a amostra e as agregações da tabela Raw.
 
