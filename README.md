@@ -94,3 +94,21 @@ CSV original -> PostgreSQL Raw -> consultas SQL -> exportação CSV
 ## Reprodutibilidade e entrega
 
 As dependências estão registradas em `requirements.txt`. A sequência das seções 1–6 reproduz a análise em uma instalação local. Antes de entregar, confira que o repositório GitHub contém o código, os arquivos SQL, o README, a auditoria, as respostas e os gráficos; que `.env` e credenciais não foram publicados; e que o link correto do repositório foi enviado no AVA. A data e hora limite informadas no enunciado são **05/10/2026 às 22h**.
+
+### Publicar no GitHub
+
+Faça esta etapa depois de executar e revisar o pipeline localmente:
+
+1. Crie no GitHub um repositório vazio, sem inicializar outro README, `.gitignore` ou licença.
+2. No terminal do VS Code, aberto na pasta do projeto, associe o URL HTTPS do repositório (substitua `USUARIO` e `REPOSITORIO` pelos seus valores):
+
+   ```powershell
+   git remote add origin https://github.com/USUARIO/REPOSITORIO.git
+   git push -u origin main
+   git push -u origin feat/pipeline-vendas
+   git push -u origin fix/csv-kaggle-enunciado
+   git push -u origin feat/valida-fidelidade-raw
+   ```
+
+3. No GitHub, confira a branch `main`, o histórico de commits e os arquivos de resultado. Confirme que a visibilidade do repositório permite ao avaliador acessar o link, conforme a orientação do AVA.
+4. Copie o URL do repositório e envie-o na tarefa do Módulo 1 no AVA. Depois da entrega, não faça novos commits ou pushes até receber a nota.
