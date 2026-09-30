@@ -74,6 +74,33 @@ Execute:
 
 O programa salva as oito respostas em `resultados/respostas_perguntas_negocio.csv`, o resumo numérico do Pandas em `resultados/estatisticas_descritivas.csv`, um relatório com metodologia, respostas e tabelas em `resultados/respostas_perguntas_negocio.md` e os gráficos PNG em `resultados/`. O relatório distingue faturamento (`Sales`/`valor_total`) de receita bruta (`gross income`/`receita_bruta`). Como a fonte não informa a moeda, valores aparecem em unidades monetárias, sem símbolo de moeda. Os empates são apresentados juntos.
 
+## Resultados obtidos
+
+O pipeline foi executado sobre as 1.000 linhas do CSV. A carga Raw exportou as mesmas 1.000 linhas e preservou todos os campos; a auditoria não encontrou valores ausentes, IDs duplicados, erros de data/horário ou diferenças relevantes na conferência do cálculo de `Sales`. Nenhuma linha precisou ser removida no tratamento.
+
+| Pergunta | Resultado |
+|---|---|
+| Filial com maior faturamento | Giza — 110.568,71 unidades monetárias |
+| Filial com mais vendas | Alex — 340 transações |
+| Linha com maior faturamento | Food and beverages — 56.144,86 unidades monetárias |
+| Melhor avaliação média | Food and beverages — 7,11 de 10 |
+| Forma de pagamento mais usada | Ewallet — 345 transações |
+| Valor médio das vendas | 322,97 unidades monetárias |
+| Maior venda | 1.042,65 unidades monetárias — venda `860-79-0874` |
+| Dia com mais vendas | Sábado — 164 transações |
+
+A fonte não especifica a moeda. O [relatório completo](resultados/respostas_perguntas_negocio.md) apresenta as oito respostas, as tabelas-resumo, as estatísticas descritivas, os critérios de cálculo e os seis gráficos.
+
+Os valores monetários da camada Tratada são arredondados para duas casas decimais, conforme o dicionário de dados; por isso, totais agrupados diretamente na Raw podem diferir por alguns centavos.
+
+### Exemplos de visualizações
+
+![Faturamento por filial](resultados/faturamento_por_filial.png)
+
+![Faturamento por linha de produto](resultados/faturamento_por_linha_produto.png)
+
+![Transações por dia da semana](resultados/transacoes_por_dia_semana.png)
+
 ## Fluxo resumido
 
 ```text
@@ -105,6 +132,7 @@ Faça esta etapa depois de executar e revisar o pipeline localmente:
    ```powershell
    git remote add origin https://github.com/USUARIO/REPOSITORIO.git
    git push -u origin main
+   git push -u origin docs/publicacao-github
    git push -u origin feat/pipeline-vendas
    git push -u origin fix/csv-kaggle-enunciado
    git push -u origin feat/valida-fidelidade-raw

@@ -231,7 +231,7 @@ def make_engine() -> Engine:
         )
 
     url = URL.create(
-        drivername="postgresql+psycopg",
+        drivername="postgresql+pg8000",
         username=os.environ["DB_USER"],
         password=os.environ["DB_PASSWORD"],
         host=os.environ["DB_HOST"],

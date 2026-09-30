@@ -158,14 +158,14 @@ def build_answers(
             "resposta": format_ties(top_branch_revenue),
             "detalhe": (
                 f"{format_number(top_branch_revenue_value)} "
-                "unidades monetarias (soma de valor_total)"
+                "unidades monetárias (soma de valor_total)"
             ),
         },
         {
-            "pergunta": "Qual filial teve mais transacoes?",
+            "pergunta": "Qual filial teve mais transações?",
             "resposta": format_ties(top_branch_sales),
             "detalhe": (
-                f"{int(branch_sales.loc[top_branch_sales].max())} transacoes "
+                f"{int(branch_sales.loc[top_branch_sales].max())} transações "
                 "(IDs de venda distintos)"
             ),
         },
@@ -174,11 +174,11 @@ def build_answers(
             "resposta": format_ties(top_product_revenue),
             "detalhe": (
                 f"{format_number(top_product_revenue_value)} "
-                "unidades monetarias (soma de valor_total)"
+                "unidades monetárias (soma de valor_total)"
             ),
         },
         {
-            "pergunta": "Qual linha de produto teve maior media de avaliacao?",
+            "pergunta": "Qual linha de produto teve maior média de avaliação?",
             "resposta": format_ties(top_product_rating),
             "detalhe": (
                 f"{format_number(top_product_rating_value)} "
@@ -189,16 +189,16 @@ def build_answers(
             "pergunta": "Qual forma de pagamento foi mais usada?",
             "resposta": format_ties(top_payment),
             "detalhe": (
-                f"{int(payment_sales.loc[top_payment].max())} transacoes "
+                f"{int(payment_sales.loc[top_payment].max())} transações "
                 "(IDs de venda distintos)"
             ),
         },
         {
-            "pergunta": "Qual foi o valor medio das vendas?",
+            "pergunta": "Qual foi o valor médio das vendas?",
             "resposta": format_number(average_sale),
             "detalhe": (
-                f"Media calculada sobre {transaction_count} transacoes distintas; "
-                "unidade monetaria nao informada na fonte"
+                f"Média calculada sobre {transaction_count} transações distintas; "
+                "unidade monetária não informada na fonte"
             ),
         },
         {
@@ -207,14 +207,14 @@ def build_answers(
             "detalhe": (
                 f"IDs: {', '.join(max_sales['id_venda'].astype(str))}; "
                 f"filiais: {', '.join(max_sales['filial'].astype(str).unique())}; "
-                "unidade monetaria nao informada na fonte"
+                "unidade monetária não informada na fonte"
             ),
         },
         {
-            "pergunta": "Em qual dia da semana ocorreram mais transacoes?",
+            "pergunta": "Em qual dia da semana ocorreram mais transações?",
             "resposta": format_ties(top_weekday),
             "detalhe": (
-                f"{int(weekday_sales.loc[top_weekday].max())} transacoes "
+                f"{int(weekday_sales.loc[top_weekday].max())} transações "
                 "(IDs de venda distintos)"
             ),
         },
@@ -231,8 +231,12 @@ def save_chart(series: pd.Series, title: str, ylabel: str, filename: str) -> Non
     axis.set_xlabel("")
     axis.grid(axis="y", linestyle="--", alpha=0.3)
     axis.set_axisbelow(True)
-    label_format = "%.2f" if series.dtype.kind == "f" else "%d"
-    axis.bar_label(bars, fmt=label_format, padding=3)
+    labels = (
+        [format_number(float(value)) for value in series.values]
+        if series.dtype.kind == "f"
+        else [f"{int(value):,}".replace(",", ".") for value in series.values]
+    )
+    axis.bar_label(bars, labels=labels, padding=3)
     axis.tick_params(axis="x", labelrotation=20)
     figure.tight_layout()
     figure.savefig(OUTPUT_DIR / filename, dpi=160, bbox_inches="tight")
@@ -245,37 +249,37 @@ def save_charts(aggregates: dict[str, pd.Series]) -> list[str]:
         (
             "revenue_by_branch",
             "Faturamento por filial",
-            "Soma de valor_total",
+            "Faturamento (unidades monetárias)",
             "faturamento_por_filial.png",
         ),
         (
             "sales_by_branch",
-            "Transacoes por filial",
-            "Transacoes distintas",
+            "Transa\u00e7\u00f5es por filial",
+            "Transações distintas",
             "transacoes_por_filial.png",
         ),
         (
             "revenue_by_product",
             "Faturamento por linha de produto",
-            "Soma de valor_total",
+            "Faturamento (unidades monetárias)",
             "faturamento_por_linha_produto.png",
         ),
         (
             "rating_by_product",
-            "Avaliacao media por linha de produto",
-            "Media da avaliacao (0 a 10)",
+            "Avaliação média por linha de produto",
+            "Média da avaliação (0 a 10)",
             "avaliacao_media_por_linha_produto.png",
         ),
         (
             "sales_by_payment",
-            "Transacoes por forma de pagamento",
-            "Transacoes distintas",
+            "Transações por forma de pagamento",
+            "Transações distintas",
             "transacoes_por_pagamento.png",
         ),
         (
             "sales_by_weekday",
-            "Transacoes por dia da semana",
-            "Transacoes distintas",
+            "Transações por dia da semana",
+            "Transações distintas",
             "transacoes_por_dia_semana.png",
         ),
     ]
@@ -307,7 +311,7 @@ def save_markdown(
         f"({len(data)} linhas na camada tratada).",
         "",
         "> A fonte não especifica a moeda. Os valores monetários são apresentados "
-        "> em unidades monetárias, sem atribuir símbolo de moeda.",
+        "em unidades monetárias, sem atribuir símbolo de moeda.",
         "",
         "## Respostas",
         "",
@@ -352,17 +356,17 @@ def save_markdown(
         (
             "Faturamento por linha de produto",
             "revenue_by_product",
-            "Unidades monetarias",
+            "Unidades monetárias",
         ),
         (
-            "Media de avaliacao por linha de produto",
+            "Média de avaliação por linha de produto",
             "rating_by_product",
             "Pontos (0 a 10)",
         ),
         (
-            "Transacoes por forma de pagamento",
+            "Transações por forma de pagamento",
             "sales_by_payment",
-            "Transacoes distintas",
+            "Transações distintas",
         ),
         ("Transações por dia da semana", "sales_by_weekday", "Transações distintas"),
     ]
@@ -382,8 +386,16 @@ def save_markdown(
         lines.append("")
 
     lines.extend(["## Gráficos", ""])
+    chart_titles = {
+        "faturamento_por_filial.png": "Faturamento por filial",
+        "transacoes_por_filial.png": "Transações por filial",
+        "faturamento_por_linha_produto.png": "Faturamento por linha de produto",
+        "avaliacao_media_por_linha_produto.png": "Avaliação média por linha de produto",
+        "transacoes_por_pagamento.png": "Transações por forma de pagamento",
+        "transacoes_por_dia_semana.png": "Transações por dia da semana",
+    }
     for chart in charts:
-        title = chart.removesuffix(".png").replace("_", " ").capitalize()
+        title = chart_titles[chart]
         lines.extend([f"### {title}", "", f"![{title}](./{chart})", ""])
 
     lines.extend(
@@ -402,6 +414,16 @@ def save_markdown(
                 "aparecem com zero no gráfico."
             ),
             "- Empates na maior categoria são apresentados em conjunto.",
+            (
+                "- Valores numéricos foram arredondados para duas casas decimais "
+                "na camada Tratada; a fórmula de valor_total foi conferida "
+                "antes desse arredondamento."
+            ),
+            (
+                "- Como a camada Raw mantém a precisão original, totais agrupados "
+                "diretamente nela podem diferir por centavos dos totais da camada "
+                "Tratada."
+            ),
             "",
         ]
     )
@@ -424,7 +446,7 @@ def main() -> None:
     charts = save_charts(aggregates)
     save_markdown(data, answers, aggregates, descriptive, charts)
 
-    print(f"Transacoes analisadas: {data['id_venda'].nunique()}")
+    print(f"Transações analisadas: {data['id_venda'].nunique()}")
     print(f"Respostas salvas em: {ANSWERS_CSV.relative_to(PROJECT_ROOT)}")
     print(f"Estatisticas salvas em: {DESCRIPTIVE_CSV.relative_to(PROJECT_ROOT)}")
     print(f"Relatorio salvo em: {ANSWERS_MD.relative_to(PROJECT_ROOT)}")

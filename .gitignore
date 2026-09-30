@@ -10,5 +10,8 @@ venv/
 # Arquivos locais do editor
 .vscode/
 
+# Cache local do Matplotlib
+.matplotlib-cache/
+
 # Logs
 *.log
