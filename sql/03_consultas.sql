@@ -1,102 +1,103 @@
--- Fase 2: consultas de exploracao e agregacao sobre a camada Raw.
--- Os campos numericos ainda sao texto; NULLIF evita erro em campos vazios.
+-- =============================================================================
+-- PROJETO AVALIATIVO MÓDULO 01 - ANÁLISE DE DADOS COM PYTHON
+-- Arquivo: sql/03_consultas.sql
+-- Banco: supermarket_sales_db
+-- =============================================================================
 
--- Conferir a carga Raw.
-SELECT COUNT(*) AS quantidade_linhas
+-- =============================================================================
+-- PARTE 1: CONSULTAS FUNDAMENTAIS NA CAMADA RAW
+-- Objetivo: Inspecionar e validar a integridade dos dados brutos recém-carregados.
+-- Na camada Raw os valores são preservados como texto; conversões pontuais
+-- utilizam NULLIF e BTRIM para evitar erros em campos vazios.
+-- =============================================================================
+
+-- 1.1. Conferência do volume total de linhas importadas
+SELECT COUNT(*) AS total_linhas_raw
 FROM raw_vendas;
 
+-- 1.2. Amostragem inicial dos primeiros registros da carga
 SELECT *
 FROM raw_vendas
 ORDER BY raw_id
-LIMIT 10;
+LIMIT 5;
 
--- Exemplo de filtro com WHERE.
+-- 1.3. Filtro condicional com WHERE (inspeção de vendas de uma filial específica)
 SELECT
-    "Invoice ID",
-    "Branch",
-    "Sales"
+    "Invoice ID" AS id_venda,
+    "Branch"     AS filial,
+    "City"       AS cidade,
+    "Sales"      AS valor_venda_raw
 FROM raw_vendas
 WHERE "Branch" = 'Alex'
 ORDER BY NULLIF(BTRIM("Sales"), '')::NUMERIC DESC
 LIMIT 10;
 
--- Faturamento por filial.
+-- 1.4. Agregação exploratória: faturamento e contagem de transações por filial
 SELECT
-    "Branch" AS filial,
-    SUM(NULLIF(BTRIM("Sales"), '')::NUMERIC) AS faturamento
+    "Branch"                                         AS filial,
+    COUNT(DISTINCT "Invoice ID")                     AS transacoes_distintas,
+    ROUND(SUM(NULLIF(BTRIM("Sales"), '')::NUMERIC), 2) AS faturamento_raw
 FROM raw_vendas
 GROUP BY "Branch"
-ORDER BY faturamento DESC;
+ORDER BY faturamento_raw DESC;
 
--- Quantidade de transacoes por filial.
+
+-- =============================================================================
+-- PARTE 2: VALIDAÇÃO ANALÍTICA NA CAMADA TRATADA (VENDAS_TRATADAS)
+-- Objetivo: Responder às perguntas de negócio utilizando a base limpa,
+-- tipada nativamente (NUMERIC, DATE, TIME) e com restrições ativas.
+-- =============================================================================
+
+-- 2.1. Faturamento total por filial
 SELECT
-    "Branch" AS filial,
-    COUNT(DISTINCT "Invoice ID") AS quantidade_vendas
-FROM raw_vendas
-GROUP BY "Branch"
+    filial,
+    ROUND(SUM(valor_total), 2) AS faturamento_total
+FROM vendas_tratadas
+GROUP BY filial
+ORDER BY faturamento_total DESC;
+
+-- 2.2. Quantidade de vendas distintas por filial
+SELECT
+    filial,
+    COUNT(DISTINCT id_venda) AS quantidade_vendas
+FROM vendas_tratadas
+GROUP BY filial
 ORDER BY quantidade_vendas DESC;
 
--- Faturamento por linha de produto.
+-- 2.3. Faturamento por linha de produto
 SELECT
-    "Product line" AS linha_produto,
-    SUM(NULLIF(BTRIM("Sales"), '')::NUMERIC) AS faturamento
-FROM raw_vendas
-GROUP BY "Product line"
-ORDER BY faturamento DESC;
+    linha_produto,
+    ROUND(SUM(valor_total), 2) AS faturamento_total
+FROM vendas_tratadas
+GROUP BY linha_produto
+ORDER BY faturamento_total DESC;
 
--- Avaliacao media por linha de produto.
+-- 2.4. Avaliação média dos clientes por linha de produto
 SELECT
-    "Product line" AS linha_produto,
-    AVG(NULLIF(BTRIM("Rating"), '')::NUMERIC) AS avaliacao_media
-FROM raw_vendas
-GROUP BY "Product line"
+    linha_produto,
+    ROUND(AVG(avaliacao), 2) AS avaliacao_media
+FROM vendas_tratadas
+GROUP BY linha_produto
 ORDER BY avaliacao_media DESC;
 
--- Forma de pagamento mais usada.
+-- 2.5. Forma de pagamento mais utilizada
 SELECT
-    "Payment" AS forma_pagamento,
-    COUNT(DISTINCT "Invoice ID") AS quantidade_vendas
-FROM raw_vendas
-GROUP BY "Payment"
+    forma_pagamento,
+    COUNT(DISTINCT id_venda) AS total_transacoes
+FROM vendas_tratadas
+GROUP BY forma_pagamento
+ORDER BY total_transacoes DESC;
+
+-- 2.6. Valor médio das vendas (ticket médio) e maior venda registrada
+SELECT
+    ROUND(AVG(valor_total), 2) AS valor_medio_venda,
+    ROUND(MAX(valor_total), 2) AS maior_venda_registrada
+FROM vendas_tratadas;
+
+-- 2.7. Quantidade de vendas por dia da semana (utilizando a coluna derivada dia_semana)
+SELECT
+    dia_semana,
+    COUNT(DISTINCT id_venda) AS quantidade_vendas
+FROM vendas_tratadas
+GROUP BY dia_semana
 ORDER BY quantidade_vendas DESC;
-
--- Valor medio e maior venda.
-WITH vendas AS (
-    SELECT DISTINCT ON ("Invoice ID")
-        "Invoice ID",
-        NULLIF(BTRIM("Sales"), '')::NUMERIC AS valor_total
-    FROM raw_vendas
-    ORDER BY "Invoice ID", raw_id
-)
-SELECT
-    AVG(valor_total) AS valor_medio_venda,
-    MAX(valor_total) AS maior_venda
-FROM vendas;
-
--- Quantidade de vendas por dia da semana (ISO: segunda=1, domingo=7).
-WITH vendas AS (
-    SELECT DISTINCT ON ("Invoice ID")
-        "Invoice ID",
-        TO_DATE(NULLIF(BTRIM("Date"), ''), 'MM/DD/YYYY') AS data_venda
-    FROM raw_vendas
-    WHERE "Invoice ID" IS NOT NULL
-    ORDER BY "Invoice ID", raw_id
-)
-SELECT
-    CASE EXTRACT(ISODOW FROM data_venda)::INTEGER
-        WHEN 1 THEN 'Segunda-feira'
-        WHEN 2 THEN 'Terca-feira'
-        WHEN 3 THEN 'Quarta-feira'
-        WHEN 4 THEN 'Quinta-feira'
-        WHEN 5 THEN 'Sexta-feira'
-        WHEN 6 THEN 'Sabado'
-        WHEN 7 THEN 'Domingo'
-    END AS dia_semana,
-    COUNT(*) AS quantidade_vendas
-FROM vendas
-WHERE data_venda IS NOT NULL
-GROUP BY EXTRACT(ISODOW FROM data_venda)
-ORDER BY quantidade_vendas DESC;
-
--- A exportacao do SELECT da tabela Raw para
--- data/raw/vendas_exportadas.csv sera feita no script Python 01_leitura_dados.py.
