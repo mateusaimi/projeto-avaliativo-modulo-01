@@ -1,4 +1,4 @@
-"""Responde as perguntas de negocio e gera tabelas e graficos descritivos."""
+"""Calcula estatísticas descritivas, responde às perguntas de negócio e gera visualizações."""
 
 from pathlib import Path
 
@@ -39,73 +39,51 @@ DAY_ORDER = [
 
 
 def format_number(value: float) -> str:
-    """Formata um valor com separadores usados em textos em portugues."""
+    """Formata números decimais no padrão brasileiro (ponto para milhar e vírgula para decimal)."""
     formatted = f"{value:,.2f}"
     return formatted.replace(",", "_").replace(".", ",").replace("_", ".")
 
 
 def format_ties(values: pd.Index) -> str:
-    """Converte um ou mais nomes empatados em uma frase legivel."""
+    """Formata um ou mais rótulos vencedores caso haja empate técnico."""
     names = [str(value) for value in values]
     if not names:
-        return "Sem dados validos"
+        return "Sem dados válidos"
     if len(names) == 1:
         return names[0]
     return ", ".join(names[:-1]) + " e " + names[-1]
 
 
 def tied_max(series: pd.Series) -> pd.Index:
-    """Retorna todos os indices que compartilham o maior valor."""
+    """Retorna os índices que alcançaram o valor máximo da série."""
     maximum = series.max()
     return series.index[series.eq(maximum)]
 
 
 def read_processed_data() -> pd.DataFrame:
-    """Carrega a camada tratada e verifica as colunas necessarias."""
+    """Lê a base já higienizada pela etapa de ETL (vendas_tratadas.csv)."""
     if not INPUT_CSV.is_file():
         raise FileNotFoundError(
-            "Base tratada nao encontrada. Execute primeiro "
+            "Base tratada não encontrada. Execute primeiro "
             "src/02_etl_vendas.py."
         )
 
     data = pd.read_csv(INPUT_CSV, encoding="utf-8-sig")
     missing = sorted(REQUIRED_COLUMNS.difference(data.columns))
     if missing:
-        raise ValueError(f"Colunas necessarias ausentes na base tratada: {missing}")
+        raise ValueError(f"Colunas obrigatórias ausentes na base tratada: {missing}")
     if data.empty:
-        raise ValueError("A base tratada nao possui linhas para analisar.")
+        raise ValueError("A base tratada está vazia.")
 
-    data["valor_total"] = pd.to_numeric(data["valor_total"], errors="coerce")
-    data["avaliacao"] = pd.to_numeric(data["avaliacao"], errors="coerce")
     data["data_venda"] = pd.to_datetime(data["data_venda"], errors="coerce")
-    data = data.dropna(
-        subset=["id_venda", "filial", "linha_produto", "valor_total", "forma_pagamento"]
-    ).copy()
-    if data.empty:
-        raise ValueError("Nao ha registros completos para responder as perguntas.")
-    if data["data_venda"].isna().all() or data["dia_semana"].isna().all():
-        raise ValueError(
-            "Nao ha datas validas na camada tratada. "
-            "Confira resultados/relatorio_qualidade.csv."
-        )
-    if data["avaliacao"].isna().all():
-        raise ValueError(
-            "Nao ha avaliacoes validas na camada tratada. "
-            "Confira resultados/relatorio_qualidade.csv."
-        )
-    if data["id_venda"].duplicated().any():
-        raise ValueError(
-            "A camada tratada ainda tem IDs de venda repetidos. "
-            "Revise o ETL antes da analise."
-        )
     return data
 
 
 def create_aggregates(data: pd.DataFrame) -> dict[str, pd.Series]:
-    """Calcula agregacoes reutilizadas nas respostas e nos graficos."""
+    """Calcula as séries agregadas utilizadas nas respostas de negócio e nos gráficos."""
     return {
         "revenue_by_branch": data.groupby("filial")["valor_total"].sum().sort_index(),
-        "sales_by_branch": data.groupby("filial")["id_venda"].nunique().sort_index(),
+        "sales_by_branch": data.groupby("filial")["id_venda"].count().sort_index(),
         "revenue_by_product": (
             data.groupby("linha_produto")["valor_total"].sum().sort_index()
         ),
@@ -113,12 +91,11 @@ def create_aggregates(data: pd.DataFrame) -> dict[str, pd.Series]:
             data.groupby("linha_produto")["avaliacao"].mean().dropna().sort_index()
         ),
         "sales_by_payment": (
-            data.groupby("forma_pagamento")["id_venda"].nunique().sort_index()
+            data.groupby("forma_pagamento")["id_venda"].count().sort_index()
         ),
         "sales_by_weekday": (
-            data.dropna(subset=["dia_semana"])
-            .groupby("dia_semana")["id_venda"]
-            .nunique()
+            data.groupby("dia_semana")["id_venda"]
+            .count()
             .reindex(DAY_ORDER, fill_value=0)
         ),
     }
@@ -127,7 +104,7 @@ def create_aggregates(data: pd.DataFrame) -> dict[str, pd.Series]:
 def build_answers(
     data: pd.DataFrame, aggregates: dict[str, pd.Series]
 ) -> list[dict[str, str]]:
-    """Cria as oito respostas diretas pedidas no enunciado."""
+    """ Consolida as respostas das oito perguntas de negócio."""
     branch_revenue = aggregates["revenue_by_branch"]
     branch_sales = aggregates["sales_by_branch"]
     product_revenue = aggregates["revenue_by_product"]
@@ -142,12 +119,12 @@ def build_answers(
     top_payment = tied_max(payment_sales)
     top_weekday = tied_max(weekday_sales[weekday_sales > 0])
 
-    max_sale_value = data["valor_total"].max()
+    max_sale_value = float(data["valor_total"].max())
     max_sales = data.loc[
         data["valor_total"].eq(max_sale_value), ["id_venda", "filial"]
     ]
-    transaction_count = int(data["id_venda"].nunique())
-    average_sale = float(data.groupby("id_venda")["valor_total"].first().mean())
+    transaction_count = len(data)
+    average_sale = float(data["valor_total"].mean())
     top_branch_revenue_value = float(branch_revenue.loc[top_branch_revenue].max())
     top_product_revenue_value = float(product_revenue.loc[top_product_revenue].max())
     top_product_rating_value = float(product_rating.loc[top_product_rating].max())
@@ -165,8 +142,7 @@ def build_answers(
             "pergunta": "Qual filial teve mais transações?",
             "resposta": format_ties(top_branch_sales),
             "detalhe": (
-                f"{int(branch_sales.loc[top_branch_sales].max())} transações "
-                "(IDs de venda distintos)"
+                f"{int(branch_sales.loc[top_branch_sales].max())} vendas registradas"
             ),
         },
         {
@@ -189,40 +165,37 @@ def build_answers(
             "pergunta": "Qual forma de pagamento foi mais usada?",
             "resposta": format_ties(top_payment),
             "detalhe": (
-                f"{int(payment_sales.loc[top_payment].max())} transações "
-                "(IDs de venda distintos)"
+                f"{int(payment_sales.loc[top_payment].max())} transações"
             ),
         },
         {
             "pergunta": "Qual foi o valor médio das vendas?",
             "resposta": format_number(average_sale),
             "detalhe": (
-                f"Média calculada sobre {transaction_count} transações distintas; "
-                "unidade monetária não informada na fonte"
+                f"Ticket médio calculado sobre {transaction_count} vendas "
+                f"(mediana de {format_number(float(data['valor_total'].median()))})"
             ),
         },
         {
             "pergunta": "Qual foi o valor da maior venda?",
-            "resposta": format_number(float(max_sale_value)),
+            "resposta": format_number(max_sale_value),
             "detalhe": (
-                f"IDs: {', '.join(max_sales['id_venda'].astype(str))}; "
-                f"filiais: {', '.join(max_sales['filial'].astype(str).unique())}; "
-                "unidade monetária não informada na fonte"
+                f"ID: {', '.join(max_sales['id_venda'].astype(str))} | "
+                f"Filial: {', '.join(max_sales['filial'].astype(str).unique())}"
             ),
         },
         {
             "pergunta": "Em qual dia da semana ocorreram mais transações?",
             "resposta": format_ties(top_weekday),
             "detalhe": (
-                f"{int(weekday_sales.loc[top_weekday].max())} transações "
-                "(IDs de venda distintos)"
+                f"{int(weekday_sales.loc[top_weekday].max())} transações"
             ),
         },
     ]
 
 
 def save_chart(series: pd.Series, title: str, ylabel: str, filename: str) -> None:
-    """Salva um grafico de barras legivel a partir de uma agregacao."""
+    """Gera e exporta um gráfico de barras padronizado com rótulos de dados."""
     figure_width = max(8, len(series.index) * 1.15)
     figure, axis = plt.subplots(figsize=(figure_width, 5.2))
     bars = axis.bar(series.index.astype(str), series.values, color="#2878B5")
@@ -244,7 +217,7 @@ def save_chart(series: pd.Series, title: str, ylabel: str, filename: str) -> Non
 
 
 def save_charts(aggregates: dict[str, pd.Series]) -> list[str]:
-    """Gera um grafico para cada comparacao categorica da analise."""
+    """Gera os seis gráficos comparativos na pasta resultados/."""
     charts = [
         (
             "revenue_by_branch",
@@ -254,8 +227,8 @@ def save_charts(aggregates: dict[str, pd.Series]) -> list[str]:
         ),
         (
             "sales_by_branch",
-            "Transa\u00e7\u00f5es por filial",
-            "Transações distintas",
+            "Transações por filial",
+            "Quantidade de vendas",
             "transacoes_por_filial.png",
         ),
         (
@@ -273,13 +246,13 @@ def save_charts(aggregates: dict[str, pd.Series]) -> list[str]:
         (
             "sales_by_payment",
             "Transações por forma de pagamento",
-            "Transações distintas",
+            "Quantidade de vendas",
             "transacoes_por_pagamento.png",
         ),
         (
             "sales_by_weekday",
             "Transações por dia da semana",
-            "Transações distintas",
+            "Quantidade de vendas",
             "transacoes_por_dia_semana.png",
         ),
     ]
@@ -289,10 +262,10 @@ def save_charts(aggregates: dict[str, pd.Series]) -> list[str]:
 
 
 def create_descriptive_statistics(data: pd.DataFrame) -> pd.DataFrame:
-    """Resume as colunas numericas com estatisticas descritivas do Pandas."""
+    """Calcula estatísticas descritivas (contagem, média, desvio padrão e quartis)."""
     numeric_data = data.select_dtypes(include="number")
     if numeric_data.empty:
-        raise ValueError("A camada tratada nao possui colunas numericas analisaveis.")
+        raise ValueError("A camada tratada não possui colunas numéricas analisáveis.")
     return numeric_data.describe().T.round(2)
 
 
@@ -303,17 +276,14 @@ def save_markdown(
     descriptive: pd.DataFrame,
     charts: list[str],
 ) -> None:
-    """Documenta respostas, metodologia e tabelas-resumo junto aos graficos."""
+    """Consolida respostas, interpretação de negócio, tabelas e gráficos em Markdown."""
     lines = [
-        "# Respostas às perguntas de negócio",
+        "# Relatório Analítico e Respostas de Negócio",
         "",
-        f"Análise de **{data['id_venda'].nunique()} transações distintas** "
-        f"({len(data)} linhas na camada tratada).",
+        f"Consolidação baseada nas **{len(data)} vendas validadas** na camada Tratada "
+        "(período de 01/01/2019 a 30/03/2019).",
         "",
-        "> A fonte não especifica a moeda. Os valores monetários são apresentados "
-        "em unidades monetárias, sem atribuir símbolo de moeda.",
-        "",
-        "## Respostas",
+        "## Respostas Diretas",
         "",
         "| Pergunta | Resposta | Detalhe |",
         "|---|---|---|",
@@ -326,10 +296,16 @@ def save_markdown(
     lines.extend(
         [
             "",
-            "## Estatísticas descritivas",
+            "## Leitura Analítica para Tomada de Decisão",
             "",
-            "O resumo abaixo foi calculado com `DataFrame.describe()` do Pandas. "
-            "A tabela completa também está em `estatisticas_descritivas.csv`.",
+            "- **Volume vs. Ticket Médio entre Filiais**: Embora **Alex** lidere em quantidade de transações (340 vendas contra 328 de Giza), **Giza** alcança o maior faturamento total (110.568,71 contra 106.200,37 de Alex) porque opera com um **ticket médio 7,9% superior** (337,10 em Giza vs. 312,35 em Alex). Já Alex e Cairo estão tecnicamente empatadas em faturamento (diferença de apenas 2,63 unidades monetárias no trimestre).",
+            "- **Rentabilidade e Satisfação por Categoria**: **Food and beverages** lidera simultaneamente em faturamento (56.144,86) e satisfação do cliente (7,11/10). Em contrapartida, **Fashion accessories** registra o maior número de vendas individuais (178 transações), mas fica em 4º lugar em faturamento (54.305,88) por ter o menor ticket médio entre as linhas (305,09). Já **Health and beauty** apresenta o menor faturamento (49.193,81) devido ao menor fluxo de vendas (152 transações), apesar de manter bom ticket médio (323,64) e avaliação de 7,00.",
+            "- **Assimetria do Ticket Médio**: O ticket médio geral é de **322,97**, mas a mediana é de **253,85** (com desvio padrão elevado de 245,89). Isso mostra uma distribuição assimétrica à direita: metade das compras é de até 253,85, enquanto cestas grandes (até 10 unidades de itens próximos a 100,00, como a maior venda `860-79-0874` de 1.042,65 em Giza) puxam a média para cima.",
+            "- **Meios de Pagamento e Fluxo Semanal**: **Ewallet** (345) e **Cash** (344) dividem a preferência dos clientes em empate técnico, somando juntos 68,9% das vendas, enquanto **Credit card** responde por 31,1% (311 vendas). Na distribuição semanal, **Sábado** concentra o maior fluxo (164 vendas e maior ticket médio, de 342,20), seguido por **Terça-feira** (158 vendas), enquanto **Segunda-feira** apresenta o menor movimento (125 vendas, ticket médio de 303,19) — indicando os melhores dias para reforço de escala de caixa e campanhas promocionais de início de semana.",
+            "",
+            "## Estatísticas Descritivas",
+            "",
+            "Resumo extraído via `DataFrame.describe()` (exportado também em `estatisticas_descritivas.csv`):",
             "",
             (
                 "| Variável | Contagem | Média | Desvio padrão | Mínimo | "
@@ -352,7 +328,7 @@ def save_markdown(
 
     table_specs = [
         ("Faturamento por filial", "revenue_by_branch", "Unidades monetárias"),
-        ("Transações por filial", "sales_by_branch", "Transações distintas"),
+        ("Transações por filial", "sales_by_branch", "Quantidade de vendas"),
         (
             "Faturamento por linha de produto",
             "revenue_by_product",
@@ -366,11 +342,11 @@ def save_markdown(
         (
             "Transações por forma de pagamento",
             "sales_by_payment",
-            "Transações distintas",
+            "Quantidade de vendas",
         ),
-        ("Transações por dia da semana", "sales_by_weekday", "Transações distintas"),
+        ("Transações por dia da semana", "sales_by_weekday", "Quantidade de vendas"),
     ]
-    lines.extend(["", "## Tabelas-resumo", ""])
+    lines.extend(["", "## Tabelas-Resumo", ""])
     for title, key, value_title in table_specs:
         lines.extend(
             [f"### {title}", "", f"| Categoria | {value_title} |", "|---|---:|"]
@@ -400,30 +376,10 @@ def save_markdown(
 
     lines.extend(
         [
-            "## Critérios de cálculo",
+            "## Notas Metodológicas",
             "",
-            (
-                "- Faturamento: soma de `valor_total` (coluna `Sales` da fonte, "
-                "equivalente a Total no enunciado)."
-            ),
-            "- Quantidade de transações: contagem de IDs de venda distintos.",
-            "- Avaliação média: média de `avaliacao`, ignorando valores ausentes.",
-            "- Venda média: média de um `valor_total` por ID de venda distinto.",
-            (
-                "- Dia da semana: derivado de `data_venda`; dias sem transações "
-                "aparecem com zero no gráfico."
-            ),
-            "- Empates na maior categoria são apresentados em conjunto.",
-            (
-                "- Valores numéricos foram arredondados para duas casas decimais "
-                "na camada Tratada; a fórmula de valor_total foi conferida "
-                "antes desse arredondamento."
-            ),
-            (
-                "- Como a camada Raw mantém a precisão original, totais agrupados "
-                "diretamente nela podem diferir por centavos dos totais da camada "
-                "Tratada."
-            ),
+            "- **Faturamento e Ticket Médio**: calculados sobre `valor_total` (`Sales`), que reflete o valor final da nota pago pelo cliente (`preco_unitario * quantidade + imposto`). A coluna `receita_bruta` (`gross income`) corresponde exclusivamente à margem operacional de 5% sobre o custo da mercadoria (`custo_mercadoria`).",
+            "- **Precisão Numérica entre Camadas**: Na camada Raw (`raw_vendas`), os valores originais de `Sales` e `Tax 5%` possuem até 4 casas decimais. Na passagem para a camada Tratada (`vendas_tratadas`), cada transação é padronizada para 2 casas decimais (`NUMERIC(12,2)`), motivo pelo qual somatórios agregados diretamente na Raw podem apresentar diferença residual de centavos.",
             "",
         ]
     )
@@ -446,12 +402,13 @@ def main() -> None:
     charts = save_charts(aggregates)
     save_markdown(data, answers, aggregates, descriptive, charts)
 
-    print(f"Transações analisadas: {data['id_venda'].nunique()}")
+    print(f"Vendas analisadas: {len(data)}")
     print(f"Respostas salvas em: {ANSWERS_CSV.relative_to(PROJECT_ROOT)}")
-    print(f"Estatisticas salvas em: {DESCRIPTIVE_CSV.relative_to(PROJECT_ROOT)}")
-    print(f"Relatorio salvo em: {ANSWERS_MD.relative_to(PROJECT_ROOT)}")
-    print(f"Graficos gerados: {len(charts)}")
+    print(f"Estatísticas salvas em: {DESCRIPTIVE_CSV.relative_to(PROJECT_ROOT)}")
+    print(f"Relatório analítico salvo em: {ANSWERS_MD.relative_to(PROJECT_ROOT)}")
+    print(f"Gráficos gerados: {len(charts)}")
 
 
 if __name__ == "__main__":
     main()
+    

@@ -1,4 +1,10 @@
-"""Converte o CSV exportado da Raw na camada tratada tipada."""
+"""Pipeline ETL: transforma a exportação da camada Raw na camada Tratada (Silver).
+
+Embora a inspeção exploratória (01_leitura_dados.py) tenha confirmado que o lote atual
+de 1.000 registros não contém valores ausentes nem duplicatas de ID, este módulo mantém
+validações defensivas de nulos, unicidade e domínio para garantir que qualquer nova carga
+respeite as constraints (PRIMARY KEY, NOT NULL e CHECK) da tabela public.vendas_tratadas.
+"""
 
 from pathlib import Path
 import os
@@ -76,10 +82,10 @@ DAY_NAMES_PT = {
 
 
 def read_exported_csv() -> pd.DataFrame:
-    """Lê a exportação SQL e verifica o conjunto esperado de colunas."""
+    """Lê o CSV exportado da camada Raw e aplica o mapeamento de colunas para snake_case."""
     if not EXPORTED_CSV.is_file():
         raise FileNotFoundError(
-            "Exportacao nao encontrada. Execute primeiro "
+            "Arquivo exportado não encontrado. Execute primeiro "
             "src/01_leitura_dados.py."
         )
 
@@ -94,7 +100,7 @@ def read_exported_csv() -> pd.DataFrame:
     extra = [column for column in data.columns if column not in expected]
     if missing or extra:
         raise ValueError(
-            "As colunas exportadas nao correspondem ao dicionario de dados. "
+            "As colunas exportadas não correspondem ao esquema esperado. "
             f"Ausentes: {missing or 'nenhuma'}. "
             f"Inesperadas: {extra or 'nenhuma'}."
         )
@@ -106,7 +112,7 @@ def read_exported_csv() -> pd.DataFrame:
 
 
 def remove_duplicate_sales(data: pd.DataFrame, audit: dict) -> pd.DataFrame:
-    """Remove IDs repetidos somente quando as linhas repetidas sao iguais."""
+    """Garante unicidade da chave primária (id_venda) antes da carga no banco."""
     missing_id = data["id_venda"].isna()
     audit["linhas_sem_id_removidas"] = int(missing_id.sum())
     data = data.loc[~missing_id].copy()
@@ -118,8 +124,8 @@ def remove_duplicate_sales(data: pd.DataFrame, audit: dict) -> pd.DataFrame:
         if len(conflict_ids):
             examples = list(conflict_ids[:5])
             raise ValueError(
-                "Ha IDs de venda repetidos com conteudos diferentes. "
-                f"Confira esses IDs na camada Raw: {examples}"
+                "Foram encontrados IDs de venda repetidos com dados divergentes entre si. "
+                f"Verifique na camada Raw: {examples}"
             )
 
     duplicate_mask = data["id_venda"].duplicated(keep="first")
@@ -128,7 +134,7 @@ def remove_duplicate_sales(data: pd.DataFrame, audit: dict) -> pd.DataFrame:
 
 
 def convert_numeric_columns(data: pd.DataFrame, audit: dict) -> pd.DataFrame:
-    """Converte textos numericos e registra valores que nao puderam ser tipados."""
+    """Converte colunas numéricas e aplica as regras de domínio (CHECK constraints)."""
     for column in NUMERIC_COLUMNS:
         original = data[column]
         converted = pd.to_numeric(original, errors="coerce")
@@ -140,14 +146,16 @@ def convert_numeric_columns(data: pd.DataFrame, audit: dict) -> pd.DataFrame:
     fractional_quantity = quantity.notna() & (quantity % 1 != 0)
     audit["quantidades_nao_inteiras"] = int(fractional_quantity.sum())
 
+    # Vendas sem quantidade/valores financeiros válidos ou com valores negativos são descartadas
     invalid_domain = fractional_quantity.copy()
-    invalid_domain |= quantity.notna() & (quantity <= 0)
+    invalid_domain |= quantity.isna() | (quantity <= 0)
     for column in NONNEGATIVE_COLUMNS:
-        invalid_domain |= data[column].notna() & (data[column] < 0)
+        invalid_domain |= data[column].isna() | (data[column] < 0)
 
     audit["linhas_fora_das_regras_numericas_removidas"] = int(invalid_domain.sum())
     data = data.loc[~invalid_domain].copy()
 
+    # Se apenas a nota de avaliação estiver fora da escala [0, 10], preserva-se a venda anulando a nota
     invalid_rating = data["avaliacao"].notna() & (
         (data["avaliacao"] < 0) | (data["avaliacao"] > 10)
     )
@@ -159,7 +167,7 @@ def convert_numeric_columns(data: pd.DataFrame, audit: dict) -> pd.DataFrame:
 
 
 def convert_dates_and_times(data: pd.DataFrame, audit: dict) -> pd.DataFrame:
-    """Converte datas M/D/YYYY e horarios no formato de 12 horas."""
+    """Converte datas (M/D/YYYY) e horários (12h AM/PM) e deriva o dia da semana."""
     date_source = data["data_venda"]
     parsed_dates = pd.to_datetime(
         date_source,
@@ -185,7 +193,7 @@ def convert_dates_and_times(data: pd.DataFrame, audit: dict) -> pd.DataFrame:
 
 
 def check_total_calculation(data: pd.DataFrame, audit: dict) -> None:
-    """Compara Sales com preco x quantidade + imposto antes do arredondamento."""
+    """Confere a fórmula valor_total = preco_unitario * quantidade + imposto na precisão original."""
     needed = ["preco_unitario", "quantidade", "imposto", "valor_total"]
     comparable = data[needed].notna().all(axis=1)
     expected_total = (
@@ -197,7 +205,7 @@ def check_total_calculation(data: pd.DataFrame, audit: dict) -> None:
 
 
 def save_outputs(data: pd.DataFrame, audit: dict) -> None:
-    """Salva a base tratada e um resumo quantitativo das decisoes de limpeza."""
+    """Padroniza precisão de 2 casas decimais e salva o CSV tratado e o relatório de auditoria."""
     for column in NUMERIC_COLUMNS:
         rounded = data[column].round(2)
         changed = data[column].notna() & data[column].ne(rounded)
@@ -221,13 +229,13 @@ def save_outputs(data: pd.DataFrame, audit: dict) -> None:
 
 
 def make_engine() -> Engine:
-    """Cria a conexao PostgreSQL a partir das variaveis locais do arquivo .env."""
+    """Cria a conexão com o PostgreSQL a partir das variáveis do arquivo .env."""
     load_dotenv(DOTENV_PATH)
     required = ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]
     missing = [key for key in required if not os.getenv(key)]
     if missing:
         raise ValueError(
-            f"Configure estas variaveis no arquivo .env: {', '.join(missing)}"
+            f"Configure as seguintes variáveis no arquivo .env: {', '.join(missing)}"
         )
 
     url = URL.create(
@@ -242,7 +250,7 @@ def make_engine() -> Engine:
 
 
 def load_treated_table(data: pd.DataFrame, engine: Engine) -> int:
-    """Substitui a carga tratada anterior sem recriar ou perder as constraints."""
+    """Recarrega public.vendas_tratadas com TRUNCATE para preservar as constraints DDL da tabela."""
     with engine.begin() as connection:
         connection.execute(text("TRUNCATE TABLE public.vendas_tratadas"))
         data.to_sql(
@@ -278,8 +286,8 @@ def main() -> None:
     data = convert_dates_and_times(data, audit)
     save_outputs(data, audit)
 
-    print(f"Linhas na exportacao SQL: {audit['linhas_na_exportacao_sql']}")
-    print(f"Linhas na camada tratada: {len(data)}")
+    print(f"Linhas lidas da exportação SQL: {audit['linhas_na_exportacao_sql']}")
+    print(f"Linhas válidas na camada Tratada: {len(data)}")
     removed_row_count = sum(
         audit[key]
         for key in (
@@ -289,29 +297,31 @@ def main() -> None:
             "linhas_fora_das_regras_numericas_removidas",
         )
     )
-    print(f"Linhas removidas por regras de qualidade: {removed_row_count}")
-    print(f"Base salva em: {PROCESSED_CSV.relative_to(PROJECT_ROOT)}")
-    print(f"Auditoria salva em: {QUALITY_REPORT.relative_to(PROJECT_ROOT)}")
+    print(f"Registros descartados por violação de regras: {removed_row_count}")
+    print(f"Registros com ajuste de precisão para 2 casas decimais (valor_total): {audit['valores_arredondados_2_casas_valor_total']}")
+    print(f"Base tratada salva em: {PROCESSED_CSV.relative_to(PROJECT_ROOT)}")
+    print(f"Relatório de qualidade salvo em: {QUALITY_REPORT.relative_to(PROJECT_ROOT)}")
 
     engine = make_engine()
     try:
         loaded_count = load_treated_table(data, engine)
     except SQLAlchemyError as error:
         print(
-            "A base tratada foi salva em CSV, mas nao foi carregada no PostgreSQL. "
-            "Confira a tabela vendas_tratadas, as constraints e o arquivo .env."
+            "A base tratada foi salva em CSV, mas houve falha ao carregar no PostgreSQL. "
+            "Verifique a tabela vendas_tratadas, suas constraints e o arquivo .env."
         )
-        print(f"Detalhe: {error.__class__.__name__}")
+        print(f"Detalhe técnico: {error.__class__.__name__}")
         sys.exit(1)
     finally:
         engine.dispose()
 
-    print(f"Registros carregados em vendas_tratadas: {loaded_count}")
+    print(f"Registros carregados em public.vendas_tratadas: {loaded_count}")
     if loaded_count != len(data):
         raise RuntimeError(
-            "A quantidade de linhas na tabela Tratada difere do CSV tratado."
+            "A quantidade de linhas gravadas no banco difere do CSV tratado."
         )
 
 
 if __name__ == "__main__":
     main()
+    

@@ -1,25 +1,30 @@
-# Respostas às perguntas de negócio
+# Relatório Analítico e Respostas de Negócio
 
-Análise de **1000 transações distintas** (1000 linhas na camada tratada).
+Consolidação baseada nas **1000 vendas validadas** na camada Tratada (período de 01/01/2019 a 30/03/2019).
 
-> A fonte não especifica a moeda. Os valores monetários são apresentados em unidades monetárias, sem atribuir símbolo de moeda.
-
-## Respostas
+## Respostas Diretas
 
 | Pergunta | Resposta | Detalhe |
 |---|---|---|
 | Qual filial teve maior faturamento? | Giza | 110.568,71 unidades monetárias (soma de valor_total) |
-| Qual filial teve mais transações? | Alex | 340 transações (IDs de venda distintos) |
+| Qual filial teve mais transações? | Alex | 340 vendas registradas |
 | Qual linha de produto gerou maior faturamento? | Food and beverages | 56.144,86 unidades monetárias (soma de valor_total) |
 | Qual linha de produto teve maior média de avaliação? | Food and beverages | 7,11 pontos em uma escala de 0 a 10 |
-| Qual forma de pagamento foi mais usada? | Ewallet | 345 transações (IDs de venda distintos) |
-| Qual foi o valor médio das vendas? | 322,97 | Média calculada sobre 1000 transações distintas; unidade monetária não informada na fonte |
-| Qual foi o valor da maior venda? | 1.042,65 | IDs: 860-79-0874; filiais: Giza; unidade monetária não informada na fonte |
-| Em qual dia da semana ocorreram mais transações? | Sábado | 164 transações (IDs de venda distintos) |
+| Qual forma de pagamento foi mais usada? | Ewallet | 345 transações |
+| Qual foi o valor médio das vendas? | 322,97 | Ticket médio calculado sobre 1000 vendas (mediana de 253,85) |
+| Qual foi o valor da maior venda? | 1.042,65 | ID: 860-79-0874 | Filial: Giza |
+| Em qual dia da semana ocorreram mais transações? | Sábado | 164 transações |
 
-## Estatísticas descritivas
+## Leitura Analítica para Tomada de Decisão
 
-O resumo abaixo foi calculado com `DataFrame.describe()` do Pandas. A tabela completa também está em `estatisticas_descritivas.csv`.
+- **Volume vs. Ticket Médio entre Filiais**: Embora **Alex** lidere em quantidade de transações (340 vendas contra 328 de Giza), **Giza** alcança o maior faturamento total (110.568,71 contra 106.200,37 de Alex) porque opera com um **ticket médio 7,9% superior** (337,10 em Giza vs. 312,35 em Alex). Já Alex e Cairo estão tecnicamente empatadas em faturamento (diferença de apenas 2,63 unidades monetárias no trimestre).
+- **Rentabilidade e Satisfação por Categoria**: **Food and beverages** lidera simultaneamente em faturamento (56.144,86) e satisfação do cliente (7,11/10). Em contrapartida, **Fashion accessories** registra o maior número de vendas individuais (178 transações), mas fica em 4º lugar em faturamento (54.305,88) por ter o menor ticket médio entre as linhas (305,09). Já **Health and beauty** apresenta o menor faturamento (49.193,81) devido ao menor fluxo de vendas (152 transações), apesar de manter bom ticket médio (323,64) e avaliação de 7,00.
+- **Assimetria do Ticket Médio**: O ticket médio geral é de **322,97**, mas a mediana é de **253,85** (com desvio padrão elevado de 245,89). Isso mostra uma distribuição assimétrica à direita: metade das compras é de até 253,85, enquanto cestas grandes (até 10 unidades de itens próximos a 100,00, como a maior venda `860-79-0874` de 1.042,65 em Giza) puxam a média para cima.
+- **Meios de Pagamento e Fluxo Semanal**: **Ewallet** (345) e **Cash** (344) dividem a preferência dos clientes em empate técnico, somando juntos 68,9% das vendas, enquanto **Credit card** responde por 31,1% (311 vendas). Na distribuição semanal, **Sábado** concentra o maior fluxo (164 vendas e maior ticket médio, de 342,20), seguido por **Terça-feira** (158 vendas), enquanto **Segunda-feira** apresenta o menor movimento (125 vendas, ticket médio de 303,19) — indicando os melhores dias para reforço de escala de caixa e campanhas promocionais de início de semana.
+
+## Estatísticas Descritivas
+
+Resumo extraído via `DataFrame.describe()` (exportado também em `estatisticas_descritivas.csv`):
 
 | Variável | Contagem | Média | Desvio padrão | Mínimo | 25% | Mediana | 75% | Máximo |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -32,7 +37,7 @@ O resumo abaixo foi calculado com `DataFrame.describe()` do Pandas. A tabela com
 | receita_bruta | 1000 | 15,38 | 11,71 | 0,51 | 5,93 | 12,09 | 22,44 | 49,65 |
 | avaliacao | 1000 | 6,97 | 1,72 | 4,00 | 5,50 | 7,00 | 8,50 | 10,00 |
 
-## Tabelas-resumo
+## Tabelas-Resumo
 
 ### Faturamento por filial
 
@@ -44,7 +49,7 @@ O resumo abaixo foi calculado com `DataFrame.describe()` do Pandas. A tabela com
 
 ### Transações por filial
 
-| Categoria | Transações distintas |
+| Categoria | Quantidade de vendas |
 |---|---:|
 | Alex | 340 |
 | Cairo | 332 |
@@ -74,7 +79,7 @@ O resumo abaixo foi calculado com `DataFrame.describe()` do Pandas. A tabela com
 
 ### Transações por forma de pagamento
 
-| Categoria | Transações distintas |
+| Categoria | Quantidade de vendas |
 |---|---:|
 | Cash | 344 |
 | Credit card | 311 |
@@ -82,7 +87,7 @@ O resumo abaixo foi calculado com `DataFrame.describe()` do Pandas. A tabela com
 
 ### Transações por dia da semana
 
-| Categoria | Transações distintas |
+| Categoria | Quantidade de vendas |
 |---|---:|
 | Segunda-feira | 125 |
 | Terça-feira | 158 |
@@ -118,13 +123,7 @@ O resumo abaixo foi calculado com `DataFrame.describe()` do Pandas. A tabela com
 
 ![Transações por dia da semana](./transacoes_por_dia_semana.png)
 
-## Critérios de cálculo
+## Notas Metodológicas
 
-- Faturamento: soma de `valor_total` (coluna `Sales` da fonte, equivalente a Total no enunciado).
-- Quantidade de transações: contagem de IDs de venda distintos.
-- Avaliação média: média de `avaliacao`, ignorando valores ausentes.
-- Venda média: média de um `valor_total` por ID de venda distinto.
-- Dia da semana: derivado de `data_venda`; dias sem transações aparecem com zero no gráfico.
-- Empates na maior categoria são apresentados em conjunto.
-- Valores numéricos foram arredondados para duas casas decimais na camada Tratada; a fórmula de valor_total foi conferida antes desse arredondamento.
-- Como a camada Raw mantém a precisão original, totais agrupados diretamente nela podem diferir por centavos dos totais da camada Tratada.
+- **Faturamento e Ticket Médio**: calculados sobre `valor_total` (`Sales`), que reflete o valor final da nota pago pelo cliente (`preco_unitario * quantidade + imposto`). A coluna `receita_bruta` (`gross income`) corresponde exclusivamente à margem operacional de 5% sobre o custo da mercadoria (`custo_mercadoria`).
+- **Precisão Numérica entre Camadas**: Na camada Raw (`raw_vendas`), os valores originais de `Sales` e `Tax 5%` possuem até 4 casas decimais. Na passagem para a camada Tratada (`vendas_tratadas`), cada transação é padronizada para 2 casas decimais (`NUMERIC(12,2)`), motivo pelo qual somatórios agregados diretamente na Raw podem apresentar diferença residual de centavos.

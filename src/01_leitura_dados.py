@@ -1,4 +1,4 @@
-"""Inspeciona o CSV original, carrega a camada Raw e exporta uma consulta."""
+"""Realiza a inspeção exploratória do CSV original, carrega a tabela Raw e valida a exportação SQL."""
 
 from pathlib import Path
 import os
@@ -62,10 +62,10 @@ ORDER BY raw_id
 
 
 def read_source_csv() -> pd.DataFrame:
-    """Lê os campos do CSV como texto para preservar a camada Raw."""
+    """Lê todos os campos do CSV como texto para preservar a fidelidade na camada Raw."""
     if not SOURCE_CSV.is_file():
         raise FileNotFoundError(
-            "CSV nao encontrado. O arquivo original esperado e "
+            "Arquivo CSV não encontrado. O arquivo esperado é "
             f"{SOURCE_CSV.name}, em: {RAW_DIR}"
         )
 
@@ -82,7 +82,7 @@ def read_source_csv() -> pd.DataFrame:
     ]
     if missing_columns or unexpected_columns:
         raise ValueError(
-            "As colunas do CSV nao correspondem ao arquivo esperado. "
+            "As colunas do CSV não correspondem à estrutura esperada. "
             f"Ausentes: {missing_columns or 'nenhuma'}. "
             f"Inesperadas: {unexpected_columns or 'nenhuma'}. "
             f"Encontradas: {list(data.columns)}"
@@ -92,17 +92,18 @@ def read_source_csv() -> pd.DataFrame:
 
 
 def print_initial_inspection(data: pd.DataFrame) -> None:
-    """Exibe estrutura, valores vazios, duplicidades e amostra do CSV."""
+    """Exibe diagnóstico estrutural inicial (tipos inferidos, nulos, duplicatas e estatísticas)."""
+    # Leitura secundária com inferência de tipos do Pandas apenas para diagnóstico exploratório (EDA)
     inferred = pd.read_csv(SOURCE_CSV, encoding="utf-8-sig")
-    print(f"Arquivo: {SOURCE_CSV.name}")
-    print(f"Linhas: {len(data):,}")
-    print(f"Colunas: {len(data.columns)}")
-    print("\nTipos inferidos pelo Pandas na leitura exploratoria:")
+    print(f"Arquivo analisado: {SOURCE_CSV.name}")
+    print(f"Total de linhas: {len(data):,}")
+    print(f"Total de colunas: {len(data.columns)}")
+    print("\nTipos inferidos pelo Pandas na leitura exploratória:")
     print(inferred.dtypes.to_string())
 
     blank_counts = data.eq("").sum()
     blanks_found = blank_counts[blank_counts > 0]
-    print("\nCampos vazios por coluna:")
+    print("\nStrings vazias por coluna:")
     if blanks_found.empty:
         print("Nenhum campo vazio encontrado.")
     else:
@@ -110,35 +111,35 @@ def print_initial_inspection(data: pd.DataFrame) -> None:
 
     missing_counts = inferred.isna().sum()
     missing_found = missing_counts[missing_counts > 0]
-    print("\nValores ausentes detectados na leitura exploratoria:")
+    print("\nValores nulos (NaN) na leitura exploratória:")
     if missing_found.empty:
-        print("Nenhum valor ausente encontrado.")
+        print("Nenhum valor ausente encontrado nas 1.000 linhas.")
     else:
         print(missing_found.to_string())
 
     numeric_summary = inferred.describe().T
-    print("\nEstatisticas descritivas basicas das colunas numericas:")
+    print("\nEstatísticas descritivas iniciais das colunas numéricas:")
     if numeric_summary.empty:
-        print("Nenhuma coluna numerica foi inferida automaticamente.")
+        print("Nenhuma coluna numérica foi inferida automaticamente.")
     else:
         print(numeric_summary.to_string())
 
     exact_duplicates = int(data.duplicated().sum())
     duplicate_ids = int(data["Invoice ID"].duplicated().sum())
-    print(f"Linhas totalmente duplicadas: {exact_duplicates}")
-    print(f"IDs de venda repetidos: {duplicate_ids}")
-    print("\nPrimeiras cinco linhas conforme o CSV original:")
+    print(f"\nLinhas inteiramente duplicadas: {exact_duplicates}")
+    print(f"IDs de venda (Invoice ID) repetidos: {duplicate_ids}")
+    print("\nAmostra das cinco primeiras linhas:")
     print(data.head().to_string(index=False))
 
 
 def make_engine() -> Engine:
-    """Cria a conexao local com credenciais carregadas de .env."""
+    """Cria a conexão com o PostgreSQL usando variáveis definidas no arquivo .env."""
     load_dotenv(DOTENV_PATH)
     required = ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]
     missing = [key for key in required if not os.getenv(key)]
     if missing:
         raise ValueError(
-            f"Configure estas variaveis no arquivo .env: {', '.join(missing)}"
+            f"Configure as seguintes variáveis no arquivo .env: {', '.join(missing)}"
         )
 
     url = URL.create(
@@ -153,7 +154,7 @@ def make_engine() -> Engine:
 
 
 def load_raw_table(data: pd.DataFrame, engine: Engine) -> int:
-    """Substitui a carga anterior e insere os valores originais como texto."""
+    """Limpa a carga anterior e insere os registros brutos como texto na tabela raw_vendas."""
     with engine.begin() as connection:
         connection.execute(text("TRUNCATE TABLE public.raw_vendas RESTART IDENTITY"))
         data.to_sql(
@@ -174,7 +175,7 @@ def load_raw_table(data: pd.DataFrame, engine: Engine) -> int:
 
 
 def export_raw_query(engine: Engine) -> pd.DataFrame:
-    """Exporta o resultado de um SELECT do PostgreSQL para CSV."""
+    """Executa consulta SQL na tabela raw_vendas e exporta o resultado para CSV."""
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     exported = pd.read_sql_query(text(EXPORT_QUERY), con=engine)
     exported.to_csv(EXPORTED_CSV, index=False, encoding="utf-8-sig")
@@ -182,10 +183,10 @@ def export_raw_query(engine: Engine) -> pd.DataFrame:
 
 
 def verify_raw_round_trip(source: pd.DataFrame, exported: pd.DataFrame) -> None:
-    """Confere que a ida ao PostgreSQL preservou cada campo e a ordem das linhas."""
+    """Compara o CSV original com o CSV exportado do banco para atestar integridade da carga Raw."""
     if source.shape != exported.shape or list(source.columns) != list(exported.columns):
         raise RuntimeError(
-            "A exportacao Raw nao corresponde ao formato do CSV original: "
+            "A exportação da tabela Raw diverge das dimensões do CSV original: "
             f"original={source.shape}, exportada={exported.shape}."
         )
 
@@ -203,7 +204,7 @@ def verify_raw_round_trip(source: pd.DataFrame, exported: pd.DataFrame) -> None:
                 f"linha CSV {row_index + 2}: {list(different_columns)}"
             )
         raise RuntimeError(
-            f"{len(different_rows)} linhas diferem do CSV original apos a carga Raw. "
+            f"{len(different_rows)} linhas diferem do CSV original após a carga no banco. "
             f"Exemplos: {examples}"
         )
 
@@ -220,27 +221,27 @@ def main() -> None:
         verify_raw_round_trip(data, exported)
     except SQLAlchemyError as error:
         print(
-            "Falha ao acessar o PostgreSQL. Confira se o servico esta ativo, "
-            "se o banco e as tabelas foram criados e se o arquivo .env esta correto."
+            "Falha ao conectar ou gravar no PostgreSQL. Verifique se o serviço está ativo, "
+            "se os scripts 01 e 02 em sql/ foram executados e se o arquivo .env está correto."
         )
-        print(f"Detalhe: {error.__class__.__name__}")
+        print(f"Detalhe técnico: {error.__class__.__name__}")
         sys.exit(1)
     finally:
         engine.dispose()
 
-    print(f"\nRegistros carregados em raw_vendas: {loaded_count}")
+    print(f"\nRegistros carregados em public.raw_vendas: {loaded_count}")
     print(
-        "Registros exportados para "
+        "Registros exportados via SQL para "
         f"{EXPORTED_CSV.relative_to(PROJECT_ROOT)}: {exported_count}"
     )
-    print("Fidelidade Raw: todos os campos e a ordem das linhas conferem.")
+    print("Conferência de integridade Raw: 100% dos campos e a ordem das linhas conferem.")
 
     if loaded_count != len(data) or exported_count != loaded_count:
         raise RuntimeError(
-            "A quantidade de linhas mudou entre CSV, Raw e exportacao. "
-            "Interrompa a etapa e investigue antes de transformar os dados."
+            "Divergência na contagem de linhas entre CSV original, banco e exportação."
         )
 
 
 if __name__ == "__main__":
     main()
+    
