@@ -1,10 +1,4 @@
-"""Pipeline ETL: transforma a exportação da camada Raw na camada Tratada (Silver).
-
-Embora a inspeção exploratória (01_leitura_dados.py) tenha confirmado que o lote atual
-de 1.000 registros não contém valores ausentes nem duplicatas de ID, este módulo mantém
-validações defensivas de nulos, unicidade e domínio para garantir que qualquer nova carga
-respeite as constraints (PRIMARY KEY, NOT NULL e CHECK) da tabela public.vendas_tratadas.
-"""
+"""Etapa 2 do pipeline: limpeza, conversão de tipos, criação de colunas derivadas e carga na tabela vendas_tratadas."""
 
 from pathlib import Path
 import os

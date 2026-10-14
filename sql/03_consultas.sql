@@ -38,6 +38,11 @@ FROM raw_vendas
 GROUP BY "Branch"
 ORDER BY faturamento_raw DESC;
 
+-- 1.5. Consulta base para exportação da camada Raw para CSV (vendas_exportadas.csv)
+SELECT *
+FROM raw_vendas
+ORDER BY raw_id;
+
 
 -- Parte 2: Respostas às perguntas de negócio na camada Tratada (vendas_tratadas)
 -- Como id_venda é PRIMARY KEY NOT NULL nesta tabela, cada registro corresponde
