@@ -1,3 +1,3 @@
--- Fase 0: executar conectado ao banco postgres.
--- Executar uma vez, conectado ao banco de manutencao chamado postgres.
+-- Criação do banco de dados do projeto.
+-- Executar uma única vez, conectado ao banco padrão (postgres).
 CREATE DATABASE supermarket_sales_db;
